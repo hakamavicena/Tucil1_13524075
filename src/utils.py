@@ -1,12 +1,9 @@
 def is_connected(board):
     n = len(board)
-    visited = set()
     
-    # Cari semua warna unik
     colors = set(char for row in board for char in row)
     
     for color in colors:
-        # Cari sel pertama dengan warna ini
         start_node = None
         color_cells_count = 0
         for r in range(n):
@@ -16,7 +13,6 @@ def is_connected(board):
                     if not start_node:
                         start_node = (r, c)
         
-        # Lakukan BFS untuk hitung sel yang terhubung
         queue = [start_node]
         seen_in_bfs = {start_node}
         while queue:
@@ -28,7 +24,6 @@ def is_connected(board):
                     seen_in_bfs.add((nr, nc))
                     queue.append((nr, nc))
         
-        # Jika jumlah yang ditemukan BFS != jumlah total sel warna itu
         if len(seen_in_bfs) != color_cells_count:
             return False, f"Warna {color} terpecah/tidak menyatu!"
             
