@@ -36,7 +36,7 @@ def validate_board(board):
             return False, "Papan tidak persegi!"
         
     warna = set(char for row in board for char in row)
-    if warna != n:
+    if len(warna) != n:
         return False,f"Jumlah warna ({len(warna)}) tidak sama dengan ukuran papan {n}!"
     valid, pesan = is_connected(board)
     if (not valid):
@@ -59,11 +59,14 @@ def convert_dict(board, n):
         boardDict[(x_coor, y_coor)] = color
     return boardDict
 
+def interface(board,solution, n):
+    for  y in range(n):
+        for x in range(n):
+            if (x, y) in solution:
+                print('#', end='')
+            else:
+                print(f'{board[(x,y)]}', end='')
+        print()
+    print()
 
-def main():
-    file = input("Apa nama file:")
-    file_to_board(file)
-     
-if __name__ == "__main__":
-    main()
-    
+

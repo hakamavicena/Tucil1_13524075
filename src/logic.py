@@ -1,3 +1,5 @@
+import time 
+
 def validate_position(x, y, cc, storageColor, storagePoint, storageRow,storageCol):
     if x in storageRow or y in storageCol:
         return False
@@ -38,8 +40,10 @@ def play(board, n):
                          queenPoints.pop()
             return False
     
-    
+    start = time.process_time()
     if(searchPoints(0)):
-         return queenPoints
+         end = time.process_time()
+         return queenPoints, end-start
     else:
-         return None
+        end = time.process_time()
+        return None, end-start
