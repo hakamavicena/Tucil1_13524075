@@ -38,7 +38,9 @@ def validate_board(board):
     warna = set(char for row in board for char in row)
     if warna != n:
         return False,f"Jumlah warna ({len(warna)}) tidak sama dengan ukuran papan {n}!"
-    is_connected(board)
+    valid, pesan = is_connected(board)
+    if (not valid):
+        return valid, pesan
     return True, 'Papan Valid!'
 
 def file_to_board(path):
@@ -48,6 +50,15 @@ def file_to_board(path):
     except:
           print("Gagal membaca file :(")
     
+def convert_dict(board, n):
+    points = [(x, y) for x in range(n) for y in range(n) ]
+    boardDict = {}
+    for x in range(n*n):
+        x_coor, y_coor = points[x]
+        color = board[y_coor][x_coor]
+        boardDict[(x_coor, y_coor)] = color
+    return boardDict
+
 
 def main():
     file = input("Apa nama file:")
