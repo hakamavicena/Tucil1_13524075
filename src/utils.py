@@ -34,6 +34,9 @@ def validate_board(board):
     for row in board:
         if len(row) != n:
             return False, "Papan tidak persegi!"
+        for char in row:
+            if not char.isalpha():
+                return False, f"Karakter terlarang ditemukan: '{char}'. Hanya alfabet (A-Z) yang diperbolehkan!"
         
     warna = set(char for row in board for char in row)
     if len(warna) != n:
@@ -59,14 +62,14 @@ def convert_dict(board, n):
         boardDict[(x_coor, y_coor)] = color
     return boardDict
 
-def interface(board,solution, n):
+def interface(board,solution, n, f):
     for  y in range(n):
         for x in range(n):
             if (x, y) in solution:
-                print('#', end='')
+                print('#', end='', file=f)
             else:
-                print(f'{board[(x,y)]}', end='')
-        print()
-    print()
+                print(f'{board[(x,y)]}', end='', file=f)
+        print(file=f)
+    print(file=f)
 
 
