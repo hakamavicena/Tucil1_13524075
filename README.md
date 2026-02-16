@@ -1,5 +1,3 @@
-n
-
 # Queens Game - N-Queens Solver
 
 ## Penjelasan Program
@@ -233,8 +231,11 @@ EEE#E
 ## Author
 
 **Nama:** Hakam Avicena Mustain 
+
 **NIM:** 13524075
+
 **Mata Kuliah:** Strategi Algoritma  
+
 **Tanggal:** 11-18 Februari 2026
 
 ---
