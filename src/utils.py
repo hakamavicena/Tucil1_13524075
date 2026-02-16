@@ -34,11 +34,16 @@ def validate_board(board):
     for row in board:
         if len(row) != n:
             return False, "Papan tidak persegi!"
+        for char in row:
+            if not char.isalpha():
+                return False, f"Karakter terlarang ditemukan: '{char}'. Hanya alfabet (A-Z) yang diperbolehkan!"
         
     warna = set(char for row in board for char in row)
-    if warna != n:
+    if len(warna) != n:
         return False,f"Jumlah warna ({len(warna)}) tidak sama dengan ukuran papan {n}!"
-    is_connected(board)
+    valid, pesan = is_connected(board)
+    if (not valid):
+        return valid, pesan
     return True, 'Papan Valid!'
 
 def file_to_board(path):
@@ -48,11 +53,23 @@ def file_to_board(path):
     except:
           print("Gagal membaca file :(")
     
+def convert_dict(board, n):
+    points = [(x, y) for x in range(n) for y in range(n) ]
+    boardDict = {}
+    for x in range(n*n):
+        x_coor, y_coor = points[x]
+        color = board[y_coor][x_coor]
+        boardDict[(x_coor, y_coor)] = color
+    return boardDict
 
-def main():
-    file = input("Apa nama file:")
-    file_to_board(file)
-     
-if __name__ == "__main__":
-    main()
-    
+def interface(board,solution, n, f):
+    for  y in range(n):
+        for x in range(n):
+            if (x, y) in solution:
+                print('#', end='', file=f)
+            else:
+                print(f'{board[(x,y)]}', end='', file=f)
+        print(file=f)
+    print(file=f)
+
+
