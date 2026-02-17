@@ -75,7 +75,7 @@ pip install flet pillow
 │   ├── app.py      # Main GUI Entry Point (Flet)
 │   ├── logic.py    # Implementasi Algoritma
 │   ├── utils.py    # Fungsi utilitas & validasi
-│   └── image_process.py # Pengolahan Gambar (Bonus)
+│   ├── requirements.txt
 ├── test/           # File uji kasus (.txt)
 └── README.md 
 ```
@@ -138,9 +138,9 @@ http://localhost:8550
 
 **Syarat Board Valid:**
 - Berbentuk persegi (NxN)
-- Hanya mengandung huruf A-Z
-- Setiap warna muncul minimal N kali
-- N antara 4 sampai 12
+- Hanya mengandung huruf A-Z Pastikan Kapital
+- Jumlah warna N 
+- Satu Warna tidak terpecah atau terpisah
 
 ### 2. Pilih Algoritma
 
@@ -185,21 +185,21 @@ EEEEE
 
 **Contoh 2: Board 8x8**
 ```
-AABBCCDD
-AABBCCDD
-EEFFGGHH
-EEFFGGHH
-IIJJKKLL
-IIJJKKLL
-MMNNOOPP
-MMNNOOPP
+AABBBBBC
+AABBBBCC
+AAABBBCC
+AAADDBCC
+EAAAAACC
+EEEEAFFF
+EEEAAGFF
+HHEEEGGG
 ```
 
 **Aturan:**
 - Satu baris = satu row board
 - Tanpa spasi antar karakter
 - Hanya huruf kapital A-Z
-- Setiap warna harus muncul tepat N kali (untuk board NxN)
+- Jumlah warna unik harus tepat N (untuk board NxN)
 
 ---
 
@@ -207,19 +207,24 @@ MMNNOOPP
 
 ### Output TXT
 ```
-Original Board:
-AABBC
-ABBDC
-ADDDC
-ABBBC
-EEEEE
+AABBBBBC
+AABBBBCC
+AAABBBCC
+AAADDBCC
+EAAAAACC
+EEEEAFFF
+EEEAAGFF
+HHEEEGGG
 
 Solution (# = Queen):
-##BBC
-ABB#C
-ADD#C
-ABBBC
-EEE#E
+AAB#BBBC
+AABBBB#C
+AA#BBBCC
+AAAD#BCC
+#AAAAACC
+EEEEAFF#
+EEEAA#FF
+H#EEEGGG
 ```
 
 ### Output PNG
