@@ -1,5 +1,5 @@
 import flet as ft
-import logic, utils, image_process
+import logic, utils, asyncio
 
 
 async def main(page: ft.Page):
@@ -14,14 +14,17 @@ async def main(page: ft.Page):
         "n": 0,
         "boardDict": {},
         "is_running": False,
-        "solution": None
+        "solution": None,
+        "color_map": None,
+        "stop_event": asyncio.Event()
+  
     }
 
     status_text = ft.Text("Pilih file atau masukkan teks board...", italic=True)
     step_counter = ft.Text("Langkah: 0", weight="bold")
     duration_text = ft.Text("Durasi: 0 ms")
     
-    file_name_input = ft.TextField(label="Nama File", hint_text="Contoh: board.txt", expand=True)
+    file_name_input = ft.TextField(label="Nama File", hint_text="Contoh: board.txt (masukkan path file)", expand=True)
     manual_input = ft.TextField(label="Atau Paste Board di sini", multiline=True, min_lines=3)
     
     pure_bt_switch = ft.Switch(label="Pure Brute Force (Tanpa Backtrack)", value=True)
@@ -31,13 +34,32 @@ async def main(page: ft.Page):
         alignment=ft.alignment.Alignment(0, 0), 
         padding=20
     )
+
+    def reset(e):
+        state["board"] = None
+        state["n"] = 0
+        state["boardDict"] = {}
+        state["is_running"] = False
+        state["solution"] = None
+        state["color_map"] = None
+        state['stop_event'].clear()
+        
+        file_name_input.value = ""
+        manual_input.value = ""
+        status_text.value = "Pilih file atau masukkan teks board..."
+        step_counter.value = "Langkah: 0"
+        duration_text.value = "Durasi: 0 ms"
+        grid_display.content = ft.Column()
+        
+        page.update()
+
     
     def render_board(board_data, solution=None):
         n = len(board_data)
         state["n"] = n
         state["boardDict"] = utils.convert_dict(board_data, n)
         
-        color_map = {
+        flet_color_map = {
             'A': ft.Colors.RED_400,
             'B': ft.Colors.BLUE_400,
             'C': ft.Colors.GREEN_400,
@@ -77,7 +99,7 @@ async def main(page: ft.Page):
                 
                 cell = ft.Container(
                     content=ft.Text("Q" if is_queen else "", size=20, weight="bold", color="white"),
-                    bgcolor=color_map[char],
+                    bgcolor=flet_color_map.get(char, ft.Colors.GREY_400),
                     width=45, height=45,
                     alignment=ft.alignment.Alignment(0, 0), 
                     border=ft.border.all(1, "black12"),
@@ -91,20 +113,56 @@ async def main(page: ft.Page):
 
     def load_board(e):
         try:
-            if file_name_input.value:
-                board = utils.file_to_board(file_name_input.value)
-            else:
-                board = [line.strip() for line in manual_input.value.split("\n") if line.strip()]
+            if file_name_input.value and manual_input.value:
+                status_text.value = 'Mohon masukkan input salah satu saja ya :)'
+                page.update()
+                return
             
+            if not file_name_input.value and not manual_input.value:
+                status_text.value = 'Mohon masukkan input salah satu dulu ya :)'
+                page.update()
+                return
+            
+            if file_name_input.value:
+                if not file_name_input.value.endswith('.txt'):
+                    status_text.value = "File harus berformat .txt ya!"
+                    page.update()
+                    return
+                board = utils.file_to_board(file_name_input.value)
+                if board is None: 
+                    status_text.value = "File tidak ditemukan atau gagal dibaca!"
+                    page.update()
+                    return
+            else:
+                board = []
+                for line in manual_input.value.split("\n"):
+                    line = line.strip().replace(' ','')
+                    
+                    if not line:
+                        continue   
+                    board.append(list(line))  
+            if(len(board) == 0):
+                status_text.value = 'Inputkan board berukuran minimal 1x1 ya!'
+                page.update()
+                return 
             valid, msg = utils.validate_board(board)
             status_text.value = msg
             if valid:
                 state["board"] = board
+                unique_chars = sorted(set(char for row in board for char in row))
+                state["color_map"] = utils.generate_color_map(unique_chars)
                 render_board(board)
             page.update()
         except Exception as ex:
             status_text.value = f"Error: {str(ex)}"
             page.update()
+
+
+    start_stop_button = ft.FilledButton(
+    "MULAI PENCARIAN", 
+    icon=ft.Icons.PLAY_ARROW, 
+    width=300, height=50
+    )
 
     async def start_game(e):
         if not state["board"]:
@@ -112,16 +170,26 @@ async def main(page: ft.Page):
             page.update()
             return
 
+        if state["is_running"]:
+            state["stop_event"].set()
+            return
+        
+        state["stop_event"].clear()
         state["is_running"] = True
         status_text.value = "Sedang mencari solusi..."
+
+        start_stop_button.text = "STOP"
+        start_stop_button.icon = ft.Icons.STOP
         page.update()
 
         if pure_bt_switch.value:
-            answer, duration, step = await logic.play_pure(state["boardDict"], state["n"], page, render_board)
+            answer, duration, step = await logic.play_pure(state["boardDict"], state["n"],  render_board,  state["stop_event"])
         else:
-            answer, duration, step = await logic.play_bt(state["boardDict"], state["n"], page, render_board)
-
-        if answer is None:
+            answer, duration, step = await logic.play_bt(state["boardDict"], state["n"],  render_board,  state["stop_event"])
+        
+        if state["stop_event"].is_set():
+            status_text.value = "Anda menghentikan program pencarian. Tidak bisa melanjutkan hanya bisa mulai kembali dari awal o_o"
+        elif answer is None:
             status_text.value = "Tidak ada jawabannya, berikan board lain ya :)"
             state["solution"] = None
         else:
@@ -132,26 +200,27 @@ async def main(page: ft.Page):
         duration_text.value = f"Permainan berlangsung selama {duration * 1000:.2f} ms"
         step_counter.value = f"Permainan berlangsung dengan banyaknya konfigurasi: {step}"
         state["is_running"] = False
+        start_stop_button.text = "MULAI PENCARIAN"
+        start_stop_button.icon = ft.Icons.PLAY_ARROW
         page.update()
+    start_stop_button.on_click = start_game 
 
     def export_to_txt(e):
         if not state['board']:
-            status_text.value="Tidak ada board untuk diekspor!"
+            status_text.value = "Tidak ada board untuk diekspor!"
             page.update()
             return
         try:
             solution = state.get('solution')
-            board = state.get('board')
-            n = state.get('n')
+            board = state.get('board')  
 
             import datetime
             timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
             output_path = f"queens_solution_{timestamp}.txt"
 
-
             with open(output_path, 'w') as f:
                 for row in board:
-                    f.write(row + '\n')
+                    f.write(' '.join(row) + '\n')
                 
                 f.write('\n')
                 
@@ -160,9 +229,8 @@ async def main(page: ft.Page):
                     result = [list(row) for row in board]
                     for (x, y) in solution:
                         result[y][x] = '#'
-                    
                     for row in result:
-                        f.write(''.join(row) + '\n')
+                        f.write(' '.join(row) + '\n')
                 else:
                     f.write("Tidak/Belum ada solusi yang memenuhi. Harap jalankan programnya terlebih dahulu untuk mengetahui.\n")
             
@@ -172,8 +240,6 @@ async def main(page: ft.Page):
             status_text.value = f"Error ekspor: {str(ex)}"
             page.update()
 
-
-    
     def export_to_image(e):
         if not state["board"]:
             status_text.value = "Tidak ada board untuk diekspor!"
@@ -182,13 +248,15 @@ async def main(page: ft.Page):
         
         try:
             solution = state.get('solution')
-            color_map = state.get('color_map')  
-            
+            color_map = state.get('color_map') 
+
             import datetime
             timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
             output_path = f"queens_solution_{timestamp}.png"
             
-            saved_path = image_process.board_to_image(state["board"], solution, output_path, color_map=color_map)
+            saved_path = utils.board_to_image(
+                state["board"], solution, output_path, color_map=color_map
+            )
             
             status_text.value = f"Gambar disimpan: {saved_path}"
             page.update()
@@ -208,11 +276,10 @@ async def main(page: ft.Page):
                 ft.Card(
                     content=ft.Container(
                         content=ft.Column([
-                            ft.Text("Konfigurasi Input", weight="bold"),
-                            ft.Row([file_name_input, ft.IconButton(ft.Icons.REFRESH, on_click=load_board)]),
+                            ft.Text("Konfigurasi Input (Pastikan Input Dalam Kapital Semua!)", weight="bold"),
+                            ft.Row([file_name_input, ft.IconButton(ft.Icons.REFRESH, on_click=reset)]),
                             manual_input,
                             ft.ElevatedButton("Load Board", on_click=load_board, icon=ft.Icons.UPLOAD),
-                           
                         ]), padding=15
                     )
                 ),
@@ -225,8 +292,7 @@ async def main(page: ft.Page):
                             status_text,
                             duration_text,
                             step_counter,
-                            ft.FilledButton("MULAI PENCARIAN", icon=ft.Icons.PLAY_ARROW, 
-                                           on_click=start_game, width=300, height=50),
+                            start_stop_button,
                             ft.OutlinedButton("Ekspor ke Gambar", icon=ft.Icons.DOWNLOAD,
                                             on_click=export_to_image, width=300),
                             ft.OutlinedButton("Ekspor ke File Txt", icon=ft.Icons.DOWNLOAD,

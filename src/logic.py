@@ -1,4 +1,4 @@
-import time ,  asyncio
+import time, asyncio
 
 def validate_position_pure(combinations):
     for i in range(len(combinations)):
@@ -8,7 +8,7 @@ def validate_position_pure(combinations):
                 return False
     return True
 
-async def play_pure(board, n, page, render_board):
+async def play_pure(board, n, render_board, stop_event):  
     start = time.process_time()
     cnt = 0
     
@@ -29,21 +29,20 @@ async def play_pure(board, n, page, render_board):
     
     if len(colors) != n:
         end = time.process_time()
-        return None, end - start
+        return None, end - start, 0
     
     color_cell_lists = [color_groups[c] for c in colors]
-    
     group_sizes = [len(cells) for cells in color_cell_lists]
-   
-
     combinations = [0 for _ in range(n)]
     
     found = True
     while found:
+        if stop_event.is_set():  
+            end = time.process_time()
+            return None, end - start, cnt
+        
         cnt += 1
-        
         solutions = [color_cell_lists[i][combinations[i]] for i in range(n)]
-        
         
         rows = [q[1] for q in solutions]
         if len(set(rows)) == n:
@@ -59,7 +58,6 @@ async def play_pure(board, n, page, render_board):
             render_board(board_list, solutions)
             await asyncio.sleep(0)
         
-      
         i = n - 1
         while i >= 0 and combinations[i] == group_sizes[i] - 1:
             i -= 1
@@ -74,7 +72,8 @@ async def play_pure(board, n, page, render_board):
     end = time.process_time()
     return None, end - start, cnt
 
-def validate_position_bt(x, y, cc, storageColor, storagePoint, storageRow,storageCol):
+
+def validate_position_bt(x, y, cc, storageColor, storagePoint, storageRow, storageCol):
     if x in storageRow or y in storageCol:
         return False
     if cc in storageColor:
@@ -85,57 +84,66 @@ def validate_position_bt(x, y, cc, storageColor, storagePoint, storageRow,storag
             return False
     return True
 
-async def play_bt(board, n, page, render_board):
+
+async def play_bt(board, n, render_board, stop_event):  
     storagePoint = set()
-    storageRow =  set()
-    storageCol =  set()
-    storageColor =  set()
+    storageRow = set()
+    storageCol = set()
+    storageColor = set()
     queenPoints = []
     step = [0]
+    
     board_list = []
     for y in range(n):
         row = ""
         for x in range(n):
             row += board[(x, y)]
         board_list.append(row)
-    async def searchPoints(index,count):
-            step[0]+=1
-            if count == n:
-                 return True
-            if index >= n*n:
-                 return False
-            x = index % n
-            y = index // n
-            color = board[(x, y)]
-            if step[0] % 1000 == 0:
-                render_board(board_list, queenPoints)
-                await asyncio.sleep(0)
-            if validate_position_bt(x, y, color, storageColor, storagePoint, storageRow, storageCol):
-                storagePoint.add((x, y))
-                storageRow.add(x)
-                storageCol.add(y)
-                storageColor.add(color)
-                queenPoints.append((x, y))
-
-                if await searchPoints(index + 1, count + 1):
-                    return True
-
-                storagePoint.remove((x, y))
-                storageRow.remove(x)
-                storageCol.remove(y)
-                storageColor.remove(color)
-                queenPoints.pop()
-
-            
-            if await searchPoints(index + 1, count):
-                return True
-                         
+    
+    async def searchPoints(index, count):
+        if stop_event.is_set():  
             return False
+        
+        step[0] += 1
+        if count == n:
+            return True
+        if index >= n * n:
+            return False
+        
+        x = index % n
+        y = index // n
+        color = board[(x, y)]
+        
+        if step[0] % 1000 == 0:
+            render_board(board_list, queenPoints)
+            await asyncio.sleep(0)
+        
+        if validate_position_bt(x, y, color, storageColor, storagePoint, storageRow, storageCol):
+            storagePoint.add((x, y))
+            storageRow.add(x)
+            storageCol.add(y)
+            storageColor.add(color)
+            queenPoints.append((x, y))
+
+            if await searchPoints(index + 1, count + 1):
+                return True
+
+            storagePoint.remove((x, y))
+            storageRow.remove(x)
+            storageCol.remove(y)
+            storageColor.remove(color)
+            queenPoints.pop()
+
+        if await searchPoints(index + 1, count):
+            return True
+        
+        return False
     
     start = time.process_time()
-    if(await searchPoints(0,0)):
-         end = time.process_time()
-         return queenPoints, end-start, step[0]
+    result = await searchPoints(0, 0)
+    end = time.process_time()
+    
+    if result and not stop_event.is_set():
+        return queenPoints, end - start, step[0]
     else:
-        end = time.process_time()
-        return None, end-start, step[0]
+        return None, end - start, step[0]
